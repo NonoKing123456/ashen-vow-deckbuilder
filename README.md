@@ -4,6 +4,8 @@
 
 ## 开始游戏
 
+[在浏览器中直接游玩《灰烬誓约》](https://nonoking123456.github.io/ashen-vow-deckbuilder/)
+
 从 [v0.9.1 发行页](https://github.com/NonoKing123456/ashen-vow-deckbuilder/releases/tag/v0.9.1) 下载 `AshenVow-0.9.1-Windows-x64.zip`，完整解压后双击 `AshenVow.exe`。发行页另附有声实机对比，展示旧版与本版相同的一手牌。原版商店素材包保存在 [v0.9.0 发行页](https://github.com/NonoKing123456/ashen-vow-deckbuilder/releases/tag/v0.9.0)。
 
 ![守誓人与守钟人的首场交战](steam/screenshots/01-the-bellkeeper.jpg)

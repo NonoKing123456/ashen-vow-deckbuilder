@@ -476,14 +476,16 @@
     if (b.enemy.vulnerable) amount = Math.floor(amount * 1.5);
     return amount;
   }
-  function receiveHit(b, target, amount, piercing = false) {
+  function receiveHit(b, target, amount, piercing = false, source = 'strike') {
     const unit = target === 'player' ? b : b.enemy;
     const blocked = piercing ? 0 : Math.min(unit.block, amount);
     const lost = Math.min(unit.hp, amount - blocked);
     unit.block -= blocked;
     unit.hp -= lost;
-    if (blocked) emit(b, 'blocked', target, blocked);
-    if (lost) emit(b, 'damage', target, lost);
+    // A partially blocked hit has two results and one audiovisual contact frame.
+    const contact = b.events.length;
+    if (blocked) b.events.push({ type: 'blocked', target, value: blocked, contact, source });
+    if (lost) b.events.push({ type: 'damage', target, value: lost, contact, source });
     return lost;
   }
   function strike(b, base, hits = 1) {
@@ -776,7 +778,7 @@
     b.lastAction = { type: 'enemy', intent: { ...intent } };
     b.discard.push(...b.hand.splice(0));
     if (enemy.burn > 0) {
-      const lost = receiveHit(b, 'enemy', enemy.burn, true);
+      const lost = receiveHit(b, 'enemy', enemy.burn, true, 'burn');
       log(b, '灼烧造成 ' + lost + ' 点伤害。');
       enemy.burn = Math.max(0, enemy.burn - 2);
       if (establishOutcome(b)) return true;
@@ -787,7 +789,7 @@
     if (intent.damage) {
       for (let i = 0; i < intent.hits && b.hp > 0 && enemy.hp > 0; i++) {
         receiveHit(b, 'player', intent.damage);
-        if (b.powers.thorns) receiveHit(b, 'enemy', b.powers.thorns);
+        if (b.powers.thorns) receiveHit(b, 'enemy', b.powers.thorns, false, 'thorns');
       }
       log(
         b,
@@ -803,6 +805,7 @@
     } else log(b, enemy.name + '施展「' + intent.name + '」。');
     if (establishOutcome(b)) return true;
     enemy.block += intent.block;
+    if (intent.block) emit(b, 'block', 'enemy', intent.block);
     enemy.strength += intent.power;
     b.weak = Math.max(0, b.weak - 1);
     b.frail = Math.max(0, b.frail - 1);

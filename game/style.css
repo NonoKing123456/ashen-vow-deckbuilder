@@ -943,109 +943,6 @@ kbd {
   z-index: 4;
   overflow: hidden;
 }
-.action-chip {
-  position: absolute;
-  left: 50%;
-  top: 27%;
-  transform: translateX(-50%);
-  padding: 5px 22px;
-  background: linear-gradient(90deg, transparent, #1e1718dc 18%, #1e1718dc 82%, transparent);
-  color: #f4dfb8;
-  font: 600 18px var(--serif);
-  letter-spacing: 3px;
-  animation: chip 0.95s forwards;
-}
-.float {
-  position: absolute;
-  top: 51%;
-  color: #ffe0ac;
-  font: 700 clamp(16px, 2vw, 32px) var(--serif);
-  text-shadow:
-    0 2px 4px #171112,
-    1px -1px 1px #392b21;
-  animation: float 1.12s forwards;
-  white-space: nowrap;
-}
-.float.player {
-  left: 24%;
-}
-.float.enemy {
-  left: 77%;
-}
-.swipe.attack,
-.swipe.enemy {
-  position: absolute;
-  left: 69%;
-  top: 40%;
-  height: 4px;
-  width: 17%;
-  transform: rotate(-50deg);
-  background: linear-gradient(90deg, transparent, #eed7b1, #fff4d8, transparent);
-  box-shadow: 0 0 13px #e99669;
-  animation: slash 0.35s forwards;
-}
-.swipe.enemy {
-  left: 16%;
-  transform: rotate(40deg);
-}
-.impact .landscape {
-  animation: shake 0.31s;
-}
-.parry .arena-light {
-  animation: glint 0.46s;
-}
-@keyframes shake {
-  20% {
-    transform: translateX(2px) scale(1.009);
-  }
-  50% {
-    transform: translateX(-2px) scale(1.009);
-  }
-}
-@keyframes glint {
-  30% {
-    background-color: #d2aa6b22;
-  }
-}
-@keyframes chip {
-  0% {
-    opacity: 0;
-  }
-  15%,
-  70% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-  }
-}
-@keyframes float {
-  0% {
-    opacity: 0;
-    transform: translate(-50%, 10px);
-  }
-  12%,
-  70% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    transform: translate(-50%, -38px);
-  }
-}
-@keyframes slash {
-  0% {
-    opacity: 0;
-    scale: 0.2 1.6;
-  }
-  40% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    scale: 1.2 0.5;
-  }
-}
 #overlay {
   position: fixed;
   margin: auto;
@@ -1861,35 +1758,6 @@ select {
     transform: scale(1.004, 1.009);
   }
 }
-.hit-spark {
-  position: absolute;
-  left: 76%;
-  top: 57%;
-  width: 4px;
-  height: 3px;
-  opacity: 0;
-  border-radius: 50%;
-  background: #ffdf94;
-  box-shadow: 0 0 8px #ff9e56;
-  animation: scatter 0.48s 0.09s forwards;
-}
-.hit-spark.player {
-  left: 24%;
-}
-.hit-spark.skill,
-.hit-spark.enemy-guard {
-  background: #ddeef2;
-  box-shadow: 0 0 7px #bddfeb;
-}
-@keyframes scatter {
-  10% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    transform: translate(var(--vx), var(--vy)) scale(0.3);
-  }
-}
 .drag-card {
   position: fixed;
   z-index: 12;
@@ -1910,4 +1778,224 @@ select {
 }
 .combatant img {
   -webkit-user-drag: none;
+}
+.battle-world {
+  position: absolute;
+  inset: 0;
+  isolation: isolate;
+  pointer-events: none;
+  transform-origin: 50% 70%;
+}
+.battle-world .arena-light,
+.battle-world .cinders {
+  z-index: 3;
+}
+.battle-world .combatant {
+  z-index: 1;
+}
+.battle-world .ground-shadow {
+  z-index: 0;
+}
+.combat-fx {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 4;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+.combatant img.pose-art {
+  display: none;
+  position: absolute;
+  max-width: none;
+  width: auto;
+  object-fit: fill;
+  object-position: initial;
+  animation: none;
+  transform-origin: 0 0;
+  user-select: none;
+}
+.combatant.posed img.idle-art {
+  visibility: hidden;
+}
+.combatant.posed img.pose-art {
+  display: block;
+}
+.performing .combatant .idle-art {
+  animation-play-state: paused;
+}
+.combat-call {
+  position: absolute;
+  top: 10%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #f5e3bc;
+  text-shadow: 0 2px 5px #050407;
+  font: 600 clamp(18px, 2vw, 34px) var(--serif);
+  letter-spacing: 0.16em;
+  white-space: nowrap;
+  padding: 2px 14px 6px;
+  background: linear-gradient(90deg, transparent, #1f171a9e 35%, #1f171a9e 65%, transparent);
+  animation: call-in 0.16s ease-out;
+}
+.combat-call.hostile {
+  color: #f5c7a5;
+}
+.combat-call i {
+  width: clamp(16px, 2.5vw, 44px);
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #dabd82);
+}
+.combat-call i:last-child {
+  transform: scaleX(-1);
+}
+.battle-number {
+  position: absolute;
+  z-index: 2;
+  white-space: nowrap;
+  color: #fff0ce;
+  text-shadow:
+    0 2px 1px #411912,
+    1px 0 1px #2c1410,
+    0 4px 10px #170e0c,
+    0 0 12px #ab5a38;
+  font:
+    700 clamp(32px, 3.6vw, 62px) / 1 Georgia,
+    'SimSun',
+    serif;
+  letter-spacing: -0.03em;
+  pointer-events: none;
+}
+.battle-number.blocked,
+.battle-number.ember,
+.battle-number.heal {
+  font: 700 clamp(14px, 1.4vw, 25px) / 1.2 var(--serif);
+  color: #cde9ee;
+  text-shadow:
+    0 2px 2px #182528,
+    0 1px 7px #0c1214;
+}
+.battle-number.ember {
+  color: #ffd18c;
+}
+.battle-number.heal {
+  color: #d3ecbc;
+}
+.queued-card .playing-card,
+.end-turn.queued-card {
+  outline: 2px solid #dfc594;
+  box-shadow: 0 0 17px #d69b5669;
+}
+@keyframes call-in {
+  from {
+    opacity: 0;
+    letter-spacing: 0.25em;
+  }
+  to {
+    opacity: 1;
+    letter-spacing: 0.16em;
+  }
+}
+@media (max-width: 630px) {
+  .combat-call {
+    top: 36%;
+    font-size: 16px;
+  }
+}
+.idle-plane {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: none;
+  pointer-events: none;
+}
+.rigged:not(.posed) .idle-plane {
+  display: block;
+}
+.rigged img.idle-art {
+  visibility: hidden;
+}
+.quiet .rigged .idle-plane {
+  display: none;
+}
+.quiet .rigged:not(.posed) img.idle-art {
+  visibility: visible;
+}
+.combat-call small {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  text-align: center;
+  color: #ffd398;
+  font: 600 12px var(--serif);
+  letter-spacing: 0.18em;
+  text-shadow:
+    0 1px 4px #723515,
+    0 2px 9px #3e2313;
+}
+.hp-track {
+  position: relative;
+  overflow: hidden;
+}
+.hp-loss {
+  position: absolute;
+  top: 1px;
+  bottom: 1px;
+  background: #ffdaa2;
+  transform-origin: left center;
+}
+.combatant.guarded:after {
+  content: '';
+  position: absolute;
+  inset: 18% -7% 3%;
+  pointer-events: none;
+  background-image: url('../assets/motion/effects.webp');
+  background-size: 400% 200%;
+  background-position: 0% 100%;
+  mix-blend-mode: screen;
+  opacity: 0.27;
+}
+.performing .combatant.guarded:after {
+  opacity: 0.16;
+}
+.quiet .combatant.guarded:after {
+  opacity: 0.2;
+}
+#arena .scene-heading,
+#arena #intention {
+  transition:
+    opacity 0.15s ease,
+    filter 0.15s ease;
+}
+#arena.performing .scene-heading {
+  opacity: 0.4;
+}
+#arena.performing #intention {
+  opacity: 0.56;
+}
+.idle-plane {
+  object-fit: contain;
+  object-position: center bottom;
+}
+
+.combat-result {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  transform-origin: 50% 50%;
+  pointer-events: none;
+}
+.combat-result .battle-number {
+  position: static;
+  display: block;
+  white-space: nowrap;
 }

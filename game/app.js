@@ -9,6 +9,8 @@
     inner = $('#modal-inner');
   let run = Campaign.load() || Campaign.newRun(),
     locked = false,
+    enemyActing = false,
+    queued = null,
     sceneKey = '',
     modal = '',
     bookTab = 'cards',
@@ -24,6 +26,7 @@
   function prefs() {
     document.documentElement.classList.toggle('quiet', settings.reduced);
     AshAudio.set(settings);
+    window.AshFigures?.resume();
     try {
       localStorage.setItem('ashenvow.prefs', JSON.stringify(settings));
     } catch {}
@@ -89,6 +92,10 @@
         : ''
     }</div></div>`;
   }
+  function setGuardLights(player, enemy) {
+    $('.hero-model')?.classList.toggle('guarded', player > 0);
+    $('.foe-model')?.classList.toggle('guarded', enemy > 0);
+  }
   function combatScene() {
     const b = run.battle,
       enemy = b.enemy,
@@ -100,7 +107,9 @@
     const key = run.id + '/' + run.nodeId;
     if (sceneKey !== key || !$('#arena')) {
       sceneKey = key;
-      stage.innerHTML = `<section id="arena" style="--arena:url('${image}')"><div class="landscape"></div><i class="ground-shadow hero-shadow"></i><i class="ground-shadow foe-shadow"></i><div class="combatant hero-model"><img alt="" src="assets/oathkeeper.webp"></div><div class="combatant foe-model ${enemy.tier} ${enemy.id}"><img alt="" src="assets/enemies/${enemy.id}.webp"></div><div class="arena-light"></div><div class="cinders" aria-hidden="true">${Array.from({ length: 18 }, (_, i) => `<i style="--x:${(i * 17) % 97}%;--t:${5 + (i % 6)}s;--d:-${i * 0.83}s"></i>`).join('')}</div><div class="scene-heading"><div class="act-title"><i></i>ACT ${roman[run.act - 1]}<span>/</span>第${['一', '二', '三'][run.act - 1]}幕</div><h1>${act.name}</h1><div class="place">${icon('layer', 13)}第 ${digits(run.floor)} 层<b>·</b>${esc(Campaign.currentNode(run).name)}</div></div><div id="intention"></div><div id="fighters"></div><div id="vfx" aria-hidden="true"></div></section><section id="table"></section>`;
+      AshBattleFX.prewarm(enemy.id);
+      stage.innerHTML = `<section id="arena" style="--arena:url('${image}')"><div class="battle-world"><div class="landscape"></div><i class="ground-shadow hero-shadow"></i><i class="ground-shadow foe-shadow"></i><div class="combatant hero-model"><img class="idle-art" alt="" src="assets/oathkeeper.webp"></div><div class="combatant foe-model ${enemy.tier} ${enemy.id}"><img class="idle-art" alt="" src="assets/enemies/${enemy.id}.webp"></div><div class="arena-light"></div><div class="cinders" aria-hidden="true">${Array.from({ length: 18 }, (_, i) => `<i style="--x:${(i * 17) % 97}%;--t:${5 + (i % 6)}s;--d:-${i * 0.83}s"></i>`).join('')}</div><canvas class="combat-fx" aria-hidden="true"></canvas></div><div class="scene-heading"><div class="act-title"><i></i>ACT ${roman[run.act - 1]}<span>/</span>第${['一', '二', '三'][run.act - 1]}幕</div><h1>${act.name}</h1><div class="place">${icon('layer', 13)}第 ${digits(run.floor)} 层<b>·</b>${esc(Campaign.currentNode(run).name)}</div></div><div id="intention"></div><div id="fighters"></div><div id="vfx" aria-hidden="true"></div></section><section id="table"></section>`;
+      AshFigures.attach($('#arena'));
     }
     $('#intention').innerHTML = btn(
       'intent',
@@ -109,6 +118,7 @@
       intent.description,
     );
     $('#fighters').innerHTML = meter('player', b) + meter('enemy', enemy);
+    setGuardLights(b.block, enemy.block);
     const tip =
       run.floor === 1 && b.turn === 1
         ? b.ember < 3 && b.hand.includes('kindle') && b.hand.includes('cinder')
@@ -137,29 +147,56 @@
       });
     }
   }
-  function castGhost(key, rect, type) {
+  function castGhost(key, rect) {
     const el = document.createElement('div');
     el.className = 'cast-ghost';
     el.innerHTML = card(key);
     Object.assign(el.style, { left: rect.left + 'px', top: rect.top + 'px', width: rect.width + 'px' });
     document.body.append(el);
-    const arena = $('#arena').getBoundingClientRect();
-    const x = arena.width * (type === 'attack' ? 0.77 : 0.24) - rect.left - rect.width / 2;
-    const y = arena.top + arena.height * 0.58 - rect.top;
     const anim = el.animate(
       [
-        { opacity: 0.88, transform: 'translate(0,0) scale(1)' },
+        { opacity: 1, transform: 'perspective(650px) translateY(0) scale(1)', filter: 'brightness(1.1)' },
         {
-          opacity: 0.78,
-          offset: 0.35,
-          transform: 'translate(' + x * 0.16 + 'px,-34px) scale(.79) rotate(-4deg)',
+          offset: 0.34,
+          opacity: 0.99,
+          transform: 'perspective(650px) translateY(-22px) rotateX(-9deg) scale(1.045)',
+          filter: 'brightness(1.32)',
         },
-        { opacity: 0, transform: 'translate(' + x + 'px,' + y + 'px) scale(.14) rotate(12deg)' },
+        {
+          opacity: 0,
+          transform: 'perspective(650px) translateY(-94px) rotateX(56deg) scale(.62)',
+          filter: 'brightness(1.55)',
+        },
       ],
-      { duration: 365, easing: 'ease-in', fill: 'forwards' },
+      { duration: 245, easing: 'cubic-bezier(.25,.7,.45,1)', fill: 'forwards' },
     );
-    anim.onfinish = () => el.remove();
-    anim.oncancel = () => el.remove();
+    anim.onfinish = anim.oncancel = () => el.remove();
+  }
+  function dealHand(previous) {
+    const pile = document.querySelector('[data-act="draw"]')?.getBoundingClientRect();
+    document.querySelectorAll('.hand-card').forEach((el, i) => {
+      const key = el.querySelector('.playing-card').dataset.card;
+      const found = previous.findIndex((c) => c.key === key);
+      const orig = found < 0 ? null : previous.splice(found, 1)[0].rect;
+      const box = el.getBoundingClientRect();
+      if (orig) {
+        const dx = orig.left - box.left;
+        if (Math.abs(dx) > 2)
+          el.animate([{ translate: dx + 'px 0' }, { translate: '0 0' }], {
+            duration: 180,
+            easing: 'cubic-bezier(.18,.76,.25,1)',
+          });
+      } else {
+        const dx = Math.min(190, Math.max(25, (pile?.left ?? box.right) - box.left));
+        el.animate(
+          [
+            { opacity: 0, transform: `translate(${dx}px,16px) rotate(9deg) scale(.83)` },
+            { opacity: 1, transform: 'none' },
+          ],
+          { duration: 235, delay: i * 20, fill: 'backwards', easing: 'cubic-bezier(.15,.72,.2,1)' },
+        );
+      }
+    });
   }
   function inspect(key) {
     const c = Engine.card(key),
@@ -183,56 +220,6 @@
         '</section></div>',
     );
   }
-  function animateFighters(sound, outcome) {
-    if (settings.reduced) return;
-    const attacking = sound === 'attack' || sound === 'enemy';
-    const hostile = sound === 'enemy' || sound === 'enemy-guard';
-    const actor = $(hostile ? '.foe-model' : '.hero-model'),
-      other = $(hostile ? '.hero-model' : '.foe-model');
-    if (!actor || !other) return;
-    const dir = hostile ? -1 : 1;
-    for (const model of [actor, other]) model.getAnimations().forEach((a) => a.cancel());
-    if (attacking) {
-      actor.animate(
-        [
-          { translate: '0 0' },
-          { offset: 0.18, translate: -9 * dir + 'px 1px', rotate: -2 * dir + 'deg' },
-          { offset: 0.47, translate: 51 * dir + 'px -2px', rotate: 4 * dir + 'deg' },
-          { translate: '0 0', rotate: '0deg' },
-        ],
-        { duration: 370, easing: 'ease-out' },
-      );
-      other.animate(
-        [
-          { filter: 'brightness(1)' },
-          { offset: 0.38, translate: '0 0', filter: 'brightness(1)' },
-          { offset: 0.48, translate: 13 * dir + 'px -1px', filter: 'brightness(1.65) sepia(.25)' },
-          { translate: '0 0', filter: 'brightness(1)' },
-        ],
-        { duration: 400 },
-      );
-    } else {
-      actor.animate(
-        [
-          { filter: 'brightness(1)' },
-          { offset: 0.48, filter: 'brightness(1.35) drop-shadow(0 0 8px #c1a676)' },
-          { filter: 'brightness(1)' },
-        ],
-        { duration: 440 },
-      );
-    }
-    if (outcome !== 'active') {
-      const fallen = $(outcome === 'won' ? '.foe-model' : '.hero-model');
-      fallen.animate(
-        [
-          { opacity: 1 },
-          { offset: 0.35, opacity: 1 },
-          { opacity: 0, translate: '0 8px', filter: 'grayscale(1)' },
-        ],
-        { duration: 620, fill: 'forwards' },
-      );
-    }
-  }
   function titleMenu() {
     show(
       'title',
@@ -253,100 +240,138 @@
     );
   }
   function action(index) {
-    if (locked || dialog.open || run.phase !== 'combat') return;
-    const b = run.battle,
-      isEnd = index === null;
+    const isEnd = index === null;
+    if (dialog.open || run.phase !== 'combat') return;
+    const b = run.battle;
+    if (locked) {
+      if (!enemyActing && !queued && (!isEnd ? Engine.canPlay(b, index) : true)) {
+        queued = { key: isEnd ? null : b.hand[index], index, turn: b.turn, runId: run.id };
+        document
+          .querySelector(isEnd ? '[data-act="end"]' : `[data-play="${index}"]`)
+          ?.classList.add('queued-card');
+      }
+      return;
+    }
     if (!isEnd && !Engine.canPlay(b, index)) {
       note(Engine.blockedReason(b, index) || '这张牌当前不可用');
       return;
     }
     const usedKey = isEnd ? null : b.hand[index];
-    const origin = isEnd
-      ? null
-      : document.querySelector('[data-play="' + index + '"]')?.getBoundingClientRect();
-    const sound = isEnd ? (b.enemy.intent.damage ? 'enemy' : 'enemy-guard') : Engine.card(b.hand[index]).type,
-      name = isEnd ? b.enemy.intent.name : Engine.card(b.hand[index]).name;
+    const cardData = usedKey ? Engine.card(usedKey) : null;
+    const oldHand = [...document.querySelectorAll('.hand-card')].map((el, i) => ({
+      key: b.hand[i],
+      rect: el.getBoundingClientRect(),
+      used: !isEnd && i === index,
+    }));
+    const before = { player: { ...b, powers: { ...b.powers } }, enemy: { ...b.enemy } };
+    const intent = { ...b.enemy.intent };
+    const name = isEnd ? intent.name : cardData.name;
     if (!(isEnd ? Engine.endTurn(b) : Engine.playCard(b, index))) return;
-    AshAudio.play(sound);
-    if (origin && !settings.reduced) castGhost(usedKey, origin, sound);
     lastJournal = b.log.slice();
     run.journal = lastJournal;
     Campaign.syncBattle(run);
-    if (run.phase === 'combat') render();
-    const activeArena = $('#arena');
-    if (activeArena) {
-      const events = b.events.filter((e) => e.value > 0);
-      const hits = (target) => {
-        const list = events.filter((e) => e.target === target);
-        return list
-          .slice(0, 4)
-          .map((e) =>
-            e.type === 'damage'
-              ? `−${e.value}`
-              : e.type === 'block'
-                ? `格挡 +${e.value}`
-                : e.type === 'ember'
-                  ? `炉火 +${e.value}`
-                  : e.type === 'burn'
-                    ? `灼烧 +${e.value}`
-                    : e.type === 'heal'
-                      ? `生命 +${e.value}`
-                      : e.type === 'blocked'
-                        ? `抵挡 ${e.value}`
-                        : '',
-          )
-          .filter(Boolean)
-          .join(' · ');
-      };
-      $('#vfx').innerHTML =
-        `<div class="action-chip">${esc(name)}</div><div class="float player">${hits('player')}</div><div class="float enemy">${hits('enemy')}</div><i class="swipe ${sound}"></i>`;
-      animateFighters(sound, b.status);
-      const point =
-        sound === 'attack'
-          ? 'enemy'
-          : sound === 'enemy'
-            ? 'player'
-            : sound === 'enemy-guard'
-              ? 'enemy'
-              : 'player';
-      const fx = $('#vfx');
-      if (!settings.reduced) {
-        for (let i = 0; i < 10; i++) {
-          const spark = document.createElement('i');
-          spark.className = 'hit-spark ' + point + ' ' + sound;
-          spark.style.setProperty('--vx', Math.round(Math.cos(i * 0.63) * 50) + 'px');
-          spark.style.setProperty('--vy', Math.round(Math.sin(i * 0.63) * 37 - 10) + 'px');
-          fx.append(spark);
-        }
+    locked = true;
+    enemyActing = isEnd;
+    const reduced = settings.reduced;
+    if (!isEnd) {
+      AshAudio.cue?.('cast', { pan: 0, intensity: 0.66 });
+      if (!reduced) castGhost(usedKey, oldHand[index].rect);
+      if (run.phase === 'combat') {
+        render();
+        if (!reduced) dealHand(oldHand.filter((c) => !c.used));
+      } else {
+        const used = document.querySelector(`[data-play="${index}"]`);
+        if (used) used.style.visibility = 'hidden';
       }
-      activeArena.classList.remove('impact', 'parry');
-      void activeArena.offsetWidth;
-      activeArena.classList.add(sound === 'attack' || isEnd ? 'impact' : 'parry');
+    } else {
+      document.querySelector('.turn-line strong').textContent = '敌方回合';
+      const hint = document.querySelector('.tactical-hint');
+      if (hint) hint.textContent = '';
+      if (!reduced)
+        document.querySelectorAll('.hand-card').forEach((el, i) =>
+          el.animate(
+            [
+              { opacity: 1, transform: 'translate(0,0)' },
+              { opacity: 0, transform: 'translate(25px,17px) rotate(5deg) scale(.94)' },
+            ],
+            { duration: 125, delay: i * 13, fill: 'forwards' },
+          ),
+        );
     }
-    if (isEnd && run.phase === 'combat' && !settings.reduced) {
-      document.querySelectorAll('.hand-card').forEach((el, i) =>
-        el.animate(
-          [
-            { opacity: 0, transform: 'translate(30px,12px) rotate(4deg)' },
-            { opacity: 1, transform: 'none' },
-          ],
-          { duration: 230, delay: 45 * i, fill: 'backwards' },
-        ),
-      );
-    }
-    if (isEnd || run.phase !== 'combat') {
-      locked = true;
-      setTimeout(
-        () => {
-          locked = false;
-          if (run.phase !== 'combat') {
-            AshAudio.play(run.phase === 'defeat' ? 'turn' : 'reward');
-            render();
+    const updateMeters = () => {
+      $('#fighters').innerHTML = meter('player', before.player) + meter('enemy', before.enemy);
+      setGuardLights(before.player.block, before.enemy.block);
+    };
+    updateMeters();
+    AshBattleFX.play({
+      card: cardData,
+      enemyId: b.enemy.id,
+      end: isEnd,
+      name,
+      intent,
+      outcome: b.status,
+      events: b.events,
+      reduced,
+      guard: before.player.block,
+      ignited: cardData?.effects.some((e) => e.kind === 'litHit') && before.player.ember >= 3,
+      onBeat(events) {
+        const priorHp = { player: before.player.hp, enemy: before.enemy.hp };
+        for (const e of events) {
+          const unit = before[e.target];
+          if (e.type === 'damage') unit.hp = Math.max(0, unit.hp - e.value);
+          if (e.type === 'heal') unit.hp = Math.min(unit.maxHp, unit.hp + e.value);
+          if (e.type === 'block') unit.block += e.value;
+          if (e.type === 'blocked') unit.block = Math.max(0, unit.block - e.value);
+          if (e.type === 'burn') unit.burn = (unit.burn || 0) + e.value;
+        }
+        updateMeters();
+        if (!reduced)
+          for (const side of ['player', 'enemy']) {
+            const unit = before[side],
+              lost = priorHp[side] - unit.hp;
+            if (lost <= 0) continue;
+            const strip = document.createElement('span');
+            strip.className = 'hp-loss';
+            strip.style.left = (100 * unit.hp) / unit.maxHp + '%';
+            strip.style.width = (100 * lost) / unit.maxHp + '%';
+            document.querySelector('.fighter-hud.' + side + ' .hp-track').append(strip);
+            strip.animate(
+              [
+                { opacity: 0.95, scale: '1 1' },
+                { offset: 0.35, opacity: 0.83 },
+                { opacity: 0, scale: '0 1' },
+              ],
+              { duration: 410, fill: 'forwards' },
+            ).onfinish = () => strip.remove();
           }
-        },
-        settings.reduced ? 100 : 650,
-      );
-    }
+      },
+      onFinish() {
+        locked = false;
+        enemyActing = false;
+        if (isEnd || run.phase !== 'combat') {
+          if (run.phase !== 'combat') AshAudio.play(run.phase === 'defeat' ? 'turn' : 'reward');
+          render();
+          if (isEnd && run.phase === 'combat') {
+            AshAudio.cue?.('draw', { intensity: 0.6, pan: 0 });
+            if (!reduced) dealHand([]);
+          }
+        } else {
+          $('#fighters').innerHTML = meter('player', b) + meter('enemy', b.enemy);
+          setGuardLights(b.block, b.enemy.block);
+        }
+        const next = queued;
+        queued = null;
+        if (
+          next &&
+          run.id === next.runId &&
+          run.phase === 'combat' &&
+          next.turn === b.turn &&
+          (next.index === null || next.key === b.hand[next.index])
+        ) {
+          action(next.index);
+        }
+      },
+    });
   }
   function show(id, title, en, body, wide = false) {
     const previous = modal;
@@ -467,7 +492,7 @@
         )
         .join(
           '',
-        )}<label class="setting">静音<input type="checkbox" data-setting="muted" ${settings.muted ? 'checked' : ''}></label><label class="setting">减少动态效果<input type="checkbox" data-setting="reduced" ${settings.reduced ? 'checked' : ''}></label><div class="setting"><span>显示模式</span>${btn('fullscreen', '切换全屏', 'basic-btn')}</div><div class="setting"><span>远征种子</span><code>${esc(run.seed)}</code></div></div><div class="settings-actions">${btn('title', '主菜单', 'basic-btn')}${btn('guide', '玩法说明', 'basic-btn')}${btn('newform', '重新远征', 'basic-btn')}</div><small class="credits">灰烬誓约 / ASHEN VOW　·　v0.9.0</small>`,
+        )}<label class="setting">静音<input type="checkbox" data-setting="muted" ${settings.muted ? 'checked' : ''}></label><label class="setting">减少动态效果<input type="checkbox" data-setting="reduced" ${settings.reduced ? 'checked' : ''}></label><div class="setting"><span>显示模式</span>${btn('fullscreen', '切换全屏', 'basic-btn')}</div><div class="setting"><span>远征种子</span><code>${esc(run.seed)}</code></div></div><div class="settings-actions">${btn('title', '主菜单', 'basic-btn')}${btn('guide', '玩法说明', 'basic-btn')}${btn('newform', '重新远征', 'basic-btn')}</div><small class="credits">灰烬誓约 / ASHEN VOW　·　v0.9.1</small>`,
     );
   }
   function handle(id) {
@@ -628,7 +653,10 @@
       return;
     }
     if (target) {
-      if (locked && !dialog.open) return;
+      if (locked && !dialog.open && target.dataset.act !== 'end') {
+        queued = null;
+        AshBattleFX.finish();
+      }
       if (target.dataset.act !== 'end') AshAudio.play('click');
       handle(target.dataset.act);
     }
@@ -657,10 +685,14 @@
       ['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)
     )
       return;
-    if (dialog.open || locked) return;
+    if (dialog.open) return;
     const k = e.key.toLowerCase();
     if (k === 'm' || k === 'd' || k === 'escape' || k === '?') {
       e.preventDefault();
+      if (locked) {
+        queued = null;
+        AshBattleFX.finish();
+      }
       handle({ m: 'map', d: 'deck', escape: 'settings', '?': 'guide' }[k]);
       return;
     }
@@ -676,7 +708,11 @@
   });
   document.addEventListener('contextmenu', (e) => {
     const face = e.target.closest('.playing-card');
-    if (!face || locked) return;
+    if (!face) return;
+    if (locked) {
+      queued = null;
+      AshBattleFX.finish();
+    }
     e.preventDefault();
     const key = face.dataset.card;
     if (key) inspect(key);
@@ -746,6 +782,12 @@
       action(g.index);
   });
   document.addEventListener('pointercancel', stopDrag);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      queued = null;
+      AshBattleFX.finish();
+    }
+  });
   window.addEventListener('blur', stopDrag);
   document.addEventListener(
     'click',

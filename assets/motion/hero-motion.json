@@ -1,0 +1,89 @@
+{
+  "width": 1280,
+  "height": 640,
+  "heightScale": 1.18,
+  "pivot": [
+    0.36,
+    0.95
+  ],
+  "idlePivot": [
+    0.764,
+    0.995
+  ],
+  "loop": false,
+  "restoreIdle": true,
+  "basePath": "assets/motion/",
+  "extension": ".webp",
+  "clips": {
+    "attack": {
+      "frames": [
+        "hero-attack-01",
+        "hero-attack-02",
+        "hero-cleave-03",
+        "hero-attack-04"
+      ],
+      "ms": [
+        110,
+        66,
+        100,
+        130
+      ],
+      "impactIndex": 2,
+      "impactMs": 176
+    },
+    "guard": {
+      "frames": [
+        "hero-guard-01",
+        "hero-guard-02",
+        "hero-guard-01"
+      ],
+      "ms": [
+        95,
+        200,
+        85
+      ],
+      "impactIndex": 1,
+      "impactMs": 95
+    },
+    "lantern": {
+      "frames": [
+        "hero-lantern-01",
+        "hero-lantern-02",
+        "hero-lantern-01"
+      ],
+      "ms": [
+        115,
+        210,
+        90
+      ],
+      "impactIndex": 1,
+      "impactMs": 115
+    },
+    "thrust": {
+      "frames": [
+        "hero-thrust-01",
+        "hero-thrust-02",
+        "hero-thrust-03",
+        "hero-thrust-04"
+      ],
+      "ms": [
+        123,
+        53,
+        99,
+        124
+      ],
+      "impactIndex": 2,
+      "impactMs": 176
+    },
+    "hurt": {
+      "frames": [
+        "hero-hit"
+      ],
+      "ms": [
+        160
+      ],
+      "impactIndex": 0,
+      "impactMs": 0
+    }
+  }
+}

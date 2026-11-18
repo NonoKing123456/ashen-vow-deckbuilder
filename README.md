@@ -1,10 +1,10 @@
 # 灰烬誓约 · ASHEN VOW
 
-提灯穿过失钟教区、烬海修院和蚀日圣座。一局远征共有 24 层，玩家通过预读敌方意图、调配能量、积攒炉火来构筑牌组。Windows x64 本地发行候选版为 v0.9.0，界面及玩法文字均为简体中文。
+提灯穿过失钟教区、烬海修院和蚀日圣座。一局远征共有 24 层，玩家通过预读敌方意图、调配能量、积攒炉火来构筑牌组。Windows x64 本地发行候选版为 v0.9.1，界面及玩法文字均为简体中文。
 
 ## 开始游戏
 
-从 [v0.9.0 发行页](https://github.com/NonoKing123456/ashen-vow-deckbuilder/releases/tag/v0.9.0) 下载 `AshenVow-0.9.0-Windows-x64.zip`，完整解压后双击 `AshenVow.exe`。同一发行页也提供 Steam 商店素材包。
+从 [v0.9.1 发行页](https://github.com/NonoKing123456/ashen-vow-deckbuilder/releases/tag/v0.9.1) 下载 `AshenVow-0.9.1-Windows-x64.zip`，完整解压后双击 `AshenVow.exe`。发行页另附有声实机对比，展示旧版与本版相同的一手牌。原版商店素材包保存在 [v0.9.0 发行页](https://github.com/NonoKing123456/ashen-vow-deckbuilder/releases/tag/v0.9.0)。
 
 ![守誓人与守钟人的首场交战](steam/screenshots/01-the-bellkeeper.jpg)
 
@@ -13,6 +13,10 @@
 首次进入会遇到守钟人。点击手牌、按数字键或将牌向上拖至战场即可出牌，右键可查看卡牌及升级效果。先用零费「引火」，再打「烬火刺」，可以利用炉火条件提高伤害。按空格结束回合，按 M 看路线，按 Esc 打开设置。点击左上方灯徽可返回主菜单。
 
 每幕第八层都有一位拥有第二阶段的幕主。远征中可以获得 44 种可升级卡牌和 12 件遗物，遭遇 15 种敌人与 11 种奇遇。通关可逐级解锁 10 个誓阶。重游种子 `ASHEN-PILGRIM-01` 可进入商店实机截图所用的路线。
+
+## 0.9.1 战斗表现
+
+守誓人会压低重心挥剑、平刺、架剑或举灯。攻击抵达敌人时触发受击、音效和血条变化，连击各段独立结算。动作收势时可预输入一张手牌。减少动态效果模式可立即显示行动结果。0.9.0 的存档可直接续玩。
 
 ## 存档与控制
 
@@ -41,6 +45,8 @@ npm.cmd run package
 npm.cmd test
 node tests/journey-smoke.cjs
 node tests/controller-smoke.cjs
+node tests/combat-presentation-smoke.cjs
+node tests/audio-smoke.cjs
 node tests/desktop-smoke.cjs
 node tests/desktop-smoke.cjs "release/AshenVow-Windows-x64/AshenVow.exe"
 ```
